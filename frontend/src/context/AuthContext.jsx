@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { api } from '../services/api'
+import { api, BASE_URL } from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -8,6 +8,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Si Supabase redirigió ?code=... al Site URL (ej. / o /login) en lugar de /api/auth/callback,
+    // reenviamos inmediatamente al callback del servidor para canjear la sesión PKCE.
+    const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.has('code')) {
+      window.location.replace(`${BASE_URL}/auth/callback${window.location.search}`)
+      return
+    }
+
     let mounted = true
 
     api

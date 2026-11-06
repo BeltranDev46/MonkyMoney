@@ -5,9 +5,23 @@ export const ACCESS_COOKIE = 'sb_access_token'
 export const REFRESH_COOKIE = 'sb_refresh_token'
 export const PKCE_COOKIE = 'sb_pkce_state'
 
+/**
+ * Extrae únicamente el origin (protocolo + dominio + puerto), eliminando rutas accidentales
+ * como "/login" o "/" al final en variables de entorno como FRONTEND_URL o CORS_ORIGIN.
+ */
+function normalizeOrigin(rawUrl) {
+  const trimmed = String(rawUrl || '').trim()
+  if (!trimmed) return ''
+  try {
+    return new URL(trimmed).origin
+  } catch {
+    return trimmed.replace(/\/+$/, '')
+  }
+}
+
 export function getSupabaseConfig() {
   refreshLocalEnv()
-  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '')
+  const url = normalizeOrigin(process.env.SUPABASE_URL)
   const key = (
     process.env.SUPABASE_KEY ||
     process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -29,16 +43,21 @@ export function getSupabaseConfig() {
 
 export function getAllowedOrigins() {
   refreshLocalEnv()
-  const raw = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173'
-  return raw
+  const combined = [
+    process.env.CORS_ORIGIN || '',
+    process.env.FRONTEND_URL || '',
+  ]
+    .join(',')
     .split(',')
-    .map((o) => o.trim().replace(/\/+$/, ''))
+    .map((o) => normalizeOrigin(o))
     .filter(Boolean)
+
+  return combined.length > 0 ? [...new Set(combined)] : ['http://localhost:5173']
 }
 
 export function getFrontendOrigin() {
   refreshLocalEnv()
-  const explicit = (process.env.FRONTEND_URL || '').trim().replace(/\/+$/, '')
+  const explicit = normalizeOrigin(process.env.FRONTEND_URL)
   if (explicit) return explicit
   const origins = getAllowedOrigins()
   return origins[0] || 'http://localhost:5173'
